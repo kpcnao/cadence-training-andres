@@ -6,6 +6,12 @@ Cadence sells video courses to students. This glossary covers the language aroun
 
 ### Notifications
 
+**Discussion Question**:
+A top-level comment on a course lesson that starts a discussion with the course Instructor and Students.
+
+**Discussion Reply**:
+A response to a Discussion Question. It belongs to that question's discussion, not a separate discussion.
+
 **Notification**:
 A persistent message within Cadence that tells a specific person something relevant to them and may lead them to a related part of Cadence.
 _Avoid_: Email, browser push, marketing campaign
