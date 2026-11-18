@@ -29,9 +29,14 @@ export const writeJson = (filename: string, value: unknown): void => {
 // use any tool. Claude Code also accepts `permissionMode: "auto"` here for
 // AI-mediated approvals instead (Claude only; other agents don't offer it).
 export const claudeAgent = () =>
-  sandcastle.claudeCode("claude-opus-5-5", {
+  sandcastle.claudeCode("moonshotai/kimi-k3.1-pro[1m]", {
     env: {
       ANTHROPIC_BASE_URL: "https://openrouter.ai/api",
-      ANTHROPIC_API_KEY: required("ANTHROPIC_API_KEY"),
+      ANTHROPIC_AUTH_TOKEN: required("ANTHROPIC_API_KEY"),
+      ANTHROPIC_API_KEY: "",
+      ANTHROPIC_DEFAULT_OPUS_MODEL: "moonshotai/kimi-k3.1-pro[1m]",
+      ANTHROPIC_DEFAULT_SONNET_MODEL: "moonshotai/kimi-k3.1-pro[1m]",
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: "moonshotai/kimi-k3.1-pro[1m]",
+      CLAUDE_CODE_SUBAGENT_MODEL: "moonshotai/kimi-k3.1-pro[1m]",
     },
   });

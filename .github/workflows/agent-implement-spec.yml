@@ -309,7 +309,12 @@ jobs:
       - name: Decompose the spec into a queue
         env:
           ANTHROPIC_BASE_URL: "https://openrouter.ai/api"
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ""
+          ANTHROPIC_DEFAULT_OPUS_MODEL: "moonshotai/kimi-k3.1-pro[1m]"
+          ANTHROPIC_DEFAULT_SONNET_MODEL: "moonshotai/kimi-k3.1-pro[1m]"
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: "moonshotai/kimi-k3.1-pro[1m]"
+          CLAUDE_CODE_SUBAGENT_MODEL: "moonshotai/kimi-k3.1-pro[1m]"
           OUTPUT_DIR: ${{ runner.temp }}
         # Reads only. The queue comes back as queue.json, shaped and validated
         # by .sandcastle/agent-workflows/implement-spec/decomposition-schema.ts.
@@ -476,7 +481,12 @@ jobs:
       - name: Build the ticket
         env:
           ANTHROPIC_BASE_URL: "https://openrouter.ai/api"
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ""
+          ANTHROPIC_DEFAULT_OPUS_MODEL: "moonshotai/kimi-k3.1-pro[1m]"
+          ANTHROPIC_DEFAULT_SONNET_MODEL: "moonshotai/kimi-k3.1-pro[1m]"
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: "moonshotai/kimi-k3.1-pro[1m]"
+          CLAUDE_CODE_SUBAGENT_MODEL: "moonshotai/kimi-k3.1-pro[1m]"
         run: npx tsx .sandcastle/agent-workflows/implement-spec/build.ts
 
       - name: Check the agent committed

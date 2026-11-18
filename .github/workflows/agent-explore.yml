@@ -165,7 +165,13 @@ jobs:
       - name: Explore
         if: steps.batch.outputs.numbers != '[]'
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_BASE_URL: "https://openrouter.ai/api"
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_API_KEY: ""
+          ANTHROPIC_DEFAULT_OPUS_MODEL: "moonshotai/kimi-k3.1-pro[1m]"
+          ANTHROPIC_DEFAULT_SONNET_MODEL: "moonshotai/kimi-k3.1-pro[1m]"
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: "moonshotai/kimi-k3.1-pro[1m]"
+          CLAUDE_CODE_SUBAGENT_MODEL: "moonshotai/kimi-k3.1-pro[1m]"
           OUTPUT_DIR: ${{ runner.temp }}
         # The plan comes back as plan.json, shaped and validated by
         # .sandcastle/agent-workflows/explore/plan-schema.ts.
