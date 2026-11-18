@@ -24,7 +24,7 @@ Any coding agent that runs in a terminal and uses skills will work. Claude Code 
 This course is written for Opus-level models. Budget for it:
 
 - **$100/month is the practical minimum.** The Crash Course said a $20 plan was just enough; that advice doesn't hold here. You'll spend tokens freely while prototyping, and the factory adds its own usage on top.
-- **This fork's factory runs through OpenRouter.** Store your OpenRouter API key in the GitHub secret `ANTHROPIC_API_KEY`; the workflows expose it to Claude Code as `ANTHROPIC_AUTH_TOKEN` and select the model in `.sandcastle/agent-workflows/shared/common.ts`.
+- **This fork's factory runs through OpenRouter.** Store your OpenRouter API key in the GitHub secret `ANTHROPIC_AUTH_TOKEN`; the workflows expose it to Claude Code as `ANTHROPIC_AUTH_TOKEN` and select the model in `.sandcastle/agent-workflows/shared/common.ts`.
 - **Using another provider?** Codex, OpenCode, Pi and other agents need a provider API key, billed per token, to run in CI. GitHub Copilot runs on a Copilot plan with a fine-grained personal access token that has the "Copilot Requests" permission, saved as the `COPILOT_GITHUB_TOKEN` secret. Its model is `claude-opus-5.5`, which needs Copilot Pro+, Max, Business or Enterprise; on another plan, pick a model your plan includes, such as `claude-sonnet-4.5`.
 
 ### Prerequisites
