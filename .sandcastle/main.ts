@@ -1,5 +1,6 @@
-import { run, claudeCode } from "@ai-hero/sandcastle";
+import { run } from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
+import { claudeAgent } from "./agent-workflows/shared/common.js";
 
 const [prd, plan] = process.argv.slice(2);
 
@@ -9,7 +10,7 @@ if (!prd || !plan) {
 }
 
 await run({
-  agent: claudeCode("claude-opus-4-6"),
+  agent: claudeAgent(),
   sandbox: docker(),
   promptFile: "./.sandcastle/prompt.md",
   maxIterations: 3,

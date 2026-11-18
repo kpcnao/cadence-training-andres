@@ -1,6 +1,14 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { loadEnvFile } from "node:process";
 import * as sandcastle from "@ai-hero/sandcastle";
+
+// Load the same local environment file Sandcastle uses before checking the
+// token below. Existing process environment variables take precedence.
+const envFile = path.join(import.meta.dirname, "../../.env");
+if (fs.existsSync(envFile)) {
+  loadEnvFile(envFile);
+}
 
 export const outputDir = (): string => process.env.OUTPUT_DIR ?? "/tmp";
 

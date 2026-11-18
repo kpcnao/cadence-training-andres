@@ -1,8 +1,9 @@
-import { run, claudeCode } from "@ai-hero/sandcastle";
+import { run } from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
+import { claudeAgent } from "./agent-workflows/shared/common.js";
 
 await run({
-  agent: claudeCode("claude-opus-4-6"),
+  agent: claudeAgent(),
   sandbox: docker(),
   prompt: "Hello, how are you?",
 });

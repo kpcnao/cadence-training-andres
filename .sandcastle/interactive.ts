@@ -1,8 +1,13 @@
-import { claudeCode, interactive } from "@ai-hero/sandcastle";
+import { interactive } from "@ai-hero/sandcastle";
 import { noSandbox } from "@ai-hero/sandcastle/sandboxes/no-sandbox";
+import { claudeAgent } from "./agent-workflows/shared/common.js";
+
+const agent = claudeAgent();
 
 await interactive({
-  agent: claudeCode("claude-opus-4-6"),
+  agent,
+  // Sandcastle's interactive API does not forward agent.env itself.
+  env: agent.env,
   sandbox: noSandbox(),
   promptFile: "./.sandcastle/prompt.md",
 });
