@@ -4,6 +4,15 @@ Cadence sells video courses to students. This glossary covers the language aroun
 
 ## Language
 
+### Notifications
+
+**Notification**:
+A persistent message within Cadence that tells a specific person something relevant to them and may lead them to a related part of Cadence.
+_Avoid_: Email, browser push, marketing campaign
+
+**Notification Inbox**:
+The place within Cadence where a person reviews their Notifications and sees which are unread.
+
 ### People
 
 **Person**:
