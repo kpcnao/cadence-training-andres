@@ -21,9 +21,8 @@ export const writeJson = (filename: string, value: unknown): void => {
   );
 };
 
-// The one agent every factory workflow runs. It authenticates with a Claude
-// subscription. To bill the API instead, pass ANTHROPIC_API_KEY here and in
-// the workflow's env in place of ANTHROPIC_API_KEY.
+// The one agent every factory workflow runs. It authenticates through
+// OpenRouter with ANTHROPIC_AUTH_TOKEN, supplied by the workflow's env.
 //
 // Sandcastle runs every agent with its permission checks skipped, so it can
 // use any tool. Claude Code also accepts `permissionMode: "auto"` here for
@@ -32,7 +31,7 @@ export const claudeAgent = () =>
   sandcastle.claudeCode("moonshotai/kimi-k3.1-pro[1m]", {
     env: {
       ANTHROPIC_BASE_URL: "https://openrouter.ai/api",
-      ANTHROPIC_AUTH_TOKEN: required("ANTHROPIC_API_KEY"),
+      ANTHROPIC_AUTH_TOKEN: required("ANTHROPIC_AUTH_TOKEN"),
       ANTHROPIC_API_KEY: "",
       ANTHROPIC_DEFAULT_OPUS_MODEL: "moonshotai/kimi-k3.1-pro[1m]",
       ANTHROPIC_DEFAULT_SONNET_MODEL: "moonshotai/kimi-k3.1-pro[1m]",
