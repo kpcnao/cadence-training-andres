@@ -25,3 +25,8 @@ Write /tmp/pr-body.md in the voice of the `pr` skill: what the ticket asked
 for, what you built, what you deliberately left out. In its Evidence section,
 reference each screenshot by its absolute path, e.g.
 `![after](/tmp/evidence/after.png)`. The workflow uploads them.
+
+When every requirement above is satisfied, including the commit and clean
+working tree, end your final response with `<promise>COMPLETE</promise>`.
+Never emit that signal before the implementation, verification, and commit are
+complete.

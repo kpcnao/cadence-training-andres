@@ -11,4 +11,6 @@ await sandcastle.run({
   sandbox: noSandbox(),
   logging: { type: "stdout" },
   promptFile: path.join(import.meta.dirname, "build-prompt.md"),
+  maxIterations: 3,
+  completionSignal: "<promise>COMPLETE</promise>",
 });
