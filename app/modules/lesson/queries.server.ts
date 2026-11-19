@@ -1,0 +1,538 @@
+import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { db } from "~/db";
+import {
+  categories,
+  comments,
+  courses,
+  lessonProgress,
+  lessons,
+  modules,
+  quizAnswers,
+  quizAttempts,
+  quizOptions,
+  quizQuestions,
+  quizzes,
+  users,
+  videoWatchEvents,
+  LessonProgressStatus,
+  UserRole,
+} from "~/db/schema";
+import { renderComment } from "~/lib/comment-markdown.server";
+import { markdown, type Markdown } from "~/lib/text";
+import type { RenderedComment } from "~/components/comment-thread";
+
+type CommentAuthor = {
+  id: number;
+  name: string;
+  avatarUrl: string | null;
+  isInstructor: boolean;
+  isPlatformAdmin: boolean;
+};
+
+type ThreadComment = {
+  id: number;
+  body: Markdown;
+  createdAt: string;
+  editedAt: string | null;
+  deleted: boolean;
+  author: CommentAuthor;
+  replies: ThreadComment[];
+};
+
+export function getCourseWithDetails(id: number) {
+  const course = db
+    .select({
+      id: courses.id,
+      title: courses.title,
+      slug: courses.slug,
+      description: courses.description,
+      salesCopy: courses.salesCopy,
+      instructorId: courses.instructorId,
+      categoryId: courses.categoryId,
+      status: courses.status,
+      coverImageUrl: courses.coverImageUrl,
+      price: courses.price,
+      pppEnabled: courses.pppEnabled,
+      createdAt: courses.createdAt,
+      updatedAt: courses.updatedAt,
+      instructorName: users.name,
+      instructorAvatarUrl: users.avatarUrl,
+      instructorBio: users.bio,
+      categoryName: categories.name,
+    })
+    .from(courses)
+    .innerJoin(users, eq(courses.instructorId, users.id))
+    .innerJoin(categories, eq(courses.categoryId, categories.id))
+    .where(eq(courses.id, id))
+    .get();
+
+  if (!course) return null;
+
+  const courseModules = db
+    .select()
+    .from(modules)
+    .where(eq(modules.courseId, id))
+    .orderBy(modules.position)
+    .all();
+
+  const moduleIds = courseModules.map((m) => m.id);
+
+  const courseLessons =
+    moduleIds.length > 0
+      ? db
+          .select()
+          .from(lessons)
+          .where(or(...moduleIds.map((mid) => eq(lessons.moduleId, mid))))
+          .orderBy(lessons.position)
+          .all()
+      : [];
+
+  return {
+    ...course,
+    modules: courseModules.map((mod) => ({
+      ...mod,
+      lessons: courseLessons.filter((l) => l.moduleId === mod.id),
+    })),
+  };
+}
+
+export function getLessonById(id: number) {
+  return db.select().from(lessons).where(eq(lessons.id, id)).get();
+}
+
+export function getModuleById(id: number) {
+  return db.select().from(modules).where(eq(modules.id, id)).get();
+}
+
+export function getUserById(id: number) {
+  return db.select().from(users).where(eq(users.id, id)).get();
+}
+
+export function getLessonProgress(userId: number, lessonId: number) {
+  return db
+    .select()
+    .from(lessonProgress)
+    .where(
+      and(
+        eq(lessonProgress.userId, userId),
+        eq(lessonProgress.lessonId, lessonId)
+      )
+    )
+    .get();
+}
+
+export function getLessonProgressForCourse(userId: number, courseId: number) {
+  const courseModules = db
+    .select({ id: modules.id })
+    .from(modules)
+    .where(eq(modules.courseId, courseId))
+    .all();
+
+  if (courseModules.length === 0) return [];
+
+  const courseLessons = db
+    .select({ id: lessons.id })
+    .from(lessons)
+    .where(or(...courseModules.map((m) => eq(lessons.moduleId, m.id))))
+    .all();
+
+  if (courseLessons.length === 0) return [];
+
+  return db
+    .select()
+    .from(lessonProgress)
+    .where(
+      and(
+        eq(lessonProgress.userId, userId),
+        or(...courseLessons.map((l) => eq(lessonProgress.lessonId, l.id)))
+      )
+    )
+    .all();
+}
+
+function saveLessonProgress(
+  values: {
+    userId: number;
+    lessonId: number;
+    status: LessonProgressStatus;
+    completedAt?: string;
+  },
+  existing = getLessonProgress(values.userId, values.lessonId)
+) {
+  if (existing) {
+    return db
+      .update(lessonProgress)
+      .set(values)
+      .where(eq(lessonProgress.id, existing.id))
+      .returning()
+      .get();
+  }
+
+  return db.insert(lessonProgress).values(values).returning().get();
+}
+
+export function markLessonComplete(
+  userId: number,
+  lessonId: number,
+  now: Date
+) {
+  return saveLessonProgress({
+    userId,
+    lessonId,
+    status: LessonProgressStatus.Completed,
+    completedAt: now.toISOString(),
+  });
+}
+
+export function markLessonInProgress(userId: number, lessonId: number) {
+  const existing = getLessonProgress(userId, lessonId);
+  if (existing?.status === LessonProgressStatus.Completed) return existing;
+
+  return saveLessonProgress(
+    {
+      userId,
+      lessonId,
+      status: LessonProgressStatus.InProgress,
+    },
+    existing
+  );
+}
+
+export function getLastWatchPosition(userId: number, lessonId: number) {
+  const lastEvent = db
+    .select()
+    .from(videoWatchEvents)
+    .where(
+      and(
+        eq(videoWatchEvents.userId, userId),
+        eq(videoWatchEvents.lessonId, lessonId)
+      )
+    )
+    .orderBy(desc(videoWatchEvents.createdAt))
+    .limit(1)
+    .get();
+
+  return lastEvent?.positionSeconds ?? 0;
+}
+
+export function calculateWatchProgress(
+  userId: number,
+  lessonId: number,
+  videoDurationSeconds: number
+) {
+  if (videoDurationSeconds <= 0) return 0;
+
+  const result = db
+    .select({ maxPos: sql<number>`max(${videoWatchEvents.positionSeconds})` })
+    .from(videoWatchEvents)
+    .where(
+      and(
+        eq(videoWatchEvents.userId, userId),
+        eq(videoWatchEvents.lessonId, lessonId)
+      )
+    )
+    .get();
+
+  const maxPosition = result?.maxPos ?? 0;
+
+  return Math.min(Math.round((maxPosition / videoDurationSeconds) * 100), 100);
+}
+
+function getCourseForLesson(lessonId: number) {
+  return db
+    .select({
+      courseId: courses.id,
+      courseTitle: courses.title,
+      courseSlug: courses.slug,
+      instructorId: courses.instructorId,
+    })
+    .from(lessons)
+    .innerJoin(modules, eq(lessons.moduleId, modules.id))
+    .innerJoin(courses, eq(modules.courseId, courses.id))
+    .where(eq(lessons.id, lessonId))
+    .get();
+}
+
+export function getCommentById(commentId: number) {
+  return db.select().from(comments).where(eq(comments.id, commentId)).get();
+}
+
+export function getLessonThread(
+  lessonId: number,
+  maxThreads = 50
+): ThreadComment[] {
+  const course = getCourseForLesson(lessonId);
+  if (!course) return [];
+
+  const threadIds = db
+    .select({ id: comments.id })
+    .from(comments)
+    .where(and(eq(comments.lessonId, lessonId), isNull(comments.parentId)))
+    .orderBy(desc(comments.createdAt), desc(comments.id))
+    .limit(maxThreads)
+    .all();
+  if (threadIds.length === 0) return [];
+
+  const ids = threadIds.map((thread) => thread.id);
+  const rows = db
+    .select({
+      id: comments.id,
+      body: comments.body,
+      parentId: comments.parentId,
+      createdAt: comments.createdAt,
+      editedAt: comments.editedAt,
+      deletedAt: comments.deletedAt,
+      authorId: users.id,
+      authorName: users.name,
+      authorAvatarUrl: users.avatarUrl,
+      authorRole: users.role,
+    })
+    .from(comments)
+    .innerJoin(users, eq(comments.userId, users.id))
+    .where(
+      and(
+        eq(comments.lessonId, lessonId),
+        or(inArray(comments.id, ids), inArray(comments.parentId, ids))
+      )
+    )
+    .orderBy(asc(comments.createdAt), asc(comments.id))
+    .all();
+
+  const toThreadComment = (row: (typeof rows)[number]): ThreadComment => {
+    const deleted = row.deletedAt !== null;
+    return {
+      id: row.id,
+      body: deleted ? markdown("") : row.body,
+      createdAt: row.createdAt,
+      editedAt: deleted ? null : row.editedAt,
+      deleted,
+      author: {
+        id: row.authorId,
+        name: row.authorName,
+        avatarUrl: row.authorAvatarUrl,
+        isInstructor: row.authorId === course.instructorId,
+        isPlatformAdmin: row.authorRole === UserRole.Admin,
+      },
+      replies: [],
+    };
+  };
+
+  const topLevel: ThreadComment[] = [];
+  const byId = new Map<number, ThreadComment>();
+
+  for (const row of rows) {
+    if (row.parentId !== null) continue;
+    const comment = toThreadComment(row);
+    byId.set(comment.id, comment);
+    topLevel.push(comment);
+  }
+
+  for (const row of rows) {
+    if (row.parentId === null || row.deletedAt !== null) continue;
+    byId.get(row.parentId)?.replies.push(toThreadComment(row));
+  }
+
+  // A deleted question with no replies left has nothing worth showing.
+  return topLevel.filter((c) => !c.deleted || c.replies.length > 0);
+}
+
+export function getQuizById(id: number) {
+  return db.select().from(quizzes).where(eq(quizzes.id, id)).get();
+}
+
+export function getQuizByLessonId(lessonId: number) {
+  return db.select().from(quizzes).where(eq(quizzes.lessonId, lessonId)).get();
+}
+
+export function getQuizWithQuestions(quizId: number) {
+  const quiz = db.select().from(quizzes).where(eq(quizzes.id, quizId)).get();
+  if (!quiz) return null;
+
+  const rows = db
+    .select({ question: quizQuestions, option: quizOptions })
+    .from(quizQuestions)
+    .leftJoin(quizOptions, eq(quizOptions.questionId, quizQuestions.id))
+    .where(eq(quizQuestions.quizId, quizId))
+    .orderBy(quizQuestions.position)
+    .all();
+
+  const questionsById = new Map<
+    number,
+    typeof quizQuestions.$inferSelect & {
+      options: Array<typeof quizOptions.$inferSelect>;
+    }
+  >();
+  for (const row of rows) {
+    let question = questionsById.get(row.question.id);
+    if (!question) {
+      question = { ...row.question, options: [] };
+      questionsById.set(question.id, question);
+    }
+    if (row.option) question.options.push(row.option);
+  }
+
+  return { ...quiz, questions: [...questionsById.values()] };
+}
+
+export function getBestAttempt(userId: number, quizId: number) {
+  return db
+    .select()
+    .from(quizAttempts)
+    .where(
+      and(eq(quizAttempts.userId, userId), eq(quizAttempts.quizId, quizId))
+    )
+    .orderBy(desc(quizAttempts.score))
+    .limit(1)
+    .get();
+}
+
+function calculateGrade(score: number): string {
+  if (score >= 0.9) return "A";
+  if (score >= 0.8) return "B";
+  if (score >= 0.7) return "C";
+  if (score >= 0.6) return "D";
+  return "F";
+}
+
+type QuestionResult = {
+  questionId: number;
+  correct: boolean;
+  selectedOptionId: number | null;
+  correctOptionId: number | null;
+};
+
+export function computeResult(
+  userId: number,
+  quizId: number,
+  selectedAnswers: Record<number, number>
+) {
+  try {
+    const quiz = getQuizWithQuestions(quizId);
+    if (!quiz) {
+      console.error("quiz not found");
+      return null;
+    }
+
+    const { questions } = quiz;
+
+    let correct = 0;
+    const total = questions.length;
+    const questionResults: QuestionResult[] = [];
+
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      const selected = selectedAnswers[q.id];
+
+      if (!selected) {
+        questionResults.push({
+          questionId: q.id,
+          correct: false,
+          selectedOptionId: null,
+          correctOptionId: null,
+        });
+        continue;
+      }
+
+      const correctOptionId =
+        q.options.find((option) => option.isCorrect)?.id ?? null;
+
+      const isCorrect = selected === correctOptionId;
+      if (isCorrect) correct++;
+
+      questionResults.push({
+        questionId: q.id,
+        correct: isCorrect,
+        selectedOptionId: selected,
+        correctOptionId,
+      });
+    }
+
+    const scoreValue = total > 0 ? correct / total : 0;
+    const passed = scoreValue > 0.7;
+    const grade = calculateGrade(scoreValue);
+
+    return db.transaction((tx) => {
+      const attempt = tx
+        .insert(quizAttempts)
+        .values({
+          userId,
+          quizId,
+          score: scoreValue,
+          passed,
+        })
+        .returning()
+        .get();
+
+      const answers = questionResults.flatMap((result) =>
+        result.selectedOptionId === null
+          ? []
+          : [
+              {
+                attemptId: attempt.id,
+                questionId: result.questionId,
+                selectedOptionId: result.selectedOptionId,
+              },
+            ]
+      );
+      if (answers.length > 0) tx.insert(quizAnswers).values(answers).run();
+
+      return {
+        attemptId: attempt.id,
+        score: scoreValue,
+        passed,
+        grade,
+        totalCorrect: correct,
+        totalQuestions: total,
+        questionResults,
+      };
+    });
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+/**
+ * Renders every comment body to sanitised HTML, preserving the reply nesting.
+ * Comments are untrusted input, so this must be renderComment — never
+ * renderMarkdown, which lets raw HTML through for trusted lesson content.
+ */
+export async function renderThread(
+  nodes: ThreadComment[]
+): Promise<RenderedComment[]> {
+  return Promise.all(
+    nodes.map(async (node) => ({
+      ...node,
+      bodyHtml: node.deleted ? "" : await renderComment(node.body),
+      replies: await renderThread(node.replies),
+    }))
+  );
+}
+
+type FlatLesson = {
+  id: number;
+  title: string;
+  moduleId: number;
+  moduleTitle: string;
+};
+
+export function flattenCourseLessons(course: {
+  modules: Array<{
+    id: number;
+    title: string;
+    lessons: Array<{ id: number; title: string; moduleId: number }>;
+  }>;
+}): FlatLesson[] {
+  const flat: FlatLesson[] = [];
+  for (const mod of course.modules) {
+    for (const lesson of mod.lessons) {
+      flat.push({
+        id: lesson.id,
+        title: lesson.title,
+        moduleId: mod.id,
+        moduleTitle: mod.title,
+      });
+    }
+  }
+  return flat;
+}
