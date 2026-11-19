@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
+import type { Quiz } from "./lesson-types";
 
 export function QuizSection({
   quiz,
@@ -18,18 +19,7 @@ export function QuizSection({
   quizFetcher,
   isSubmitting,
 }: {
-  quiz: {
-    id: number;
-    title: string;
-    passingScore: number;
-    questions: Array<{
-      id: number;
-      questionText: string;
-      questionType: string;
-      position: number;
-      options: Array<{ id: number; optionText: string }>;
-    }>;
-  };
+  quiz: Quiz;
   bestAttempt: { score: number; passed: boolean } | null;
   quizResult: {
     attemptId: number;

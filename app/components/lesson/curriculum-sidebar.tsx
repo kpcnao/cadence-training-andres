@@ -3,6 +3,11 @@ import { Link } from "react-router";
 import { CheckCircle2, ChevronDown, Circle, PlayCircle } from "lucide-react";
 import { LessonProgressStatus } from "~/db/schema";
 import { cn } from "~/lib/utils";
+import type {
+  CourseSummary,
+  Curriculum,
+  LessonProgressMap,
+} from "./lesson-types";
 
 export function CurriculumSidebar({
   course,
@@ -11,14 +16,10 @@ export function CurriculumSidebar({
   lessonProgressMap,
   enrolled,
 }: {
-  course: { id: number; title: string; slug: string };
-  curriculum: Array<{
-    id: number;
-    title: string;
-    lessons: Array<{ id: number; title: string }>;
-  }>;
+  course: CourseSummary;
+  curriculum: Curriculum;
   currentLessonId: number;
-  lessonProgressMap: Record<number, string>;
+  lessonProgressMap: LessonProgressMap;
   enrolled: boolean;
 }) {
   // Find which module the current lesson belongs to

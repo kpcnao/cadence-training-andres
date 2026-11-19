@@ -22,6 +22,7 @@ import { renderMarkdown } from "~/lib/markdown.server";
 import { z } from "zod";
 import { parseFormData } from "~/lib/validation";
 import { LessonViewer } from "~/components/lesson/lesson-view";
+import type { LessonProgressMap, Quiz } from "~/components/lesson/lesson-types";
 import {
   calculateWatchProgress,
   computeResult,
@@ -153,10 +154,10 @@ export async function loader({ params, request }: Route.LoaderArgs) {
     };
   }
 
-  let lessonStatus: string | null = null;
+  let lessonStatus: LessonProgressMap[number] | null = null;
   let lastWatchPosition = 0;
   let watchProgress = 0;
-  const lessonProgressMap: Record<number, string> = {};
+  const lessonProgressMap: LessonProgressMap = {};
 
   if (currentUserId) {
     // Progress is recorded only for people who can take the course, so a
@@ -215,18 +216,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   // Check for quiz attached to this lesson
   const quizRecord = getQuizByLessonId(lessonId);
-  let quiz: {
-    id: number;
-    title: string;
-    passingScore: number;
-    questions: Array<{
-      id: number;
-      questionText: string;
-      questionType: string;
-      position: number;
-      options: Array<{ id: number; optionText: string }>;
-    }>;
-  } | null = null;
+  let quiz: Quiz | null = null;
   let bestAttempt: { score: number; passed: boolean } | null = null;
 
   if (quizRecord) {

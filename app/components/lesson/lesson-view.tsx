@@ -21,6 +21,13 @@ import { LessonProgressStatus } from "~/db/schema";
 import { countryName } from "~/lib/ppp";
 import { formatDuration } from "~/lib/utils";
 import { CurriculumSidebar } from "./curriculum-sidebar";
+import type {
+  CourseSummary,
+  Curriculum,
+  LessonLink,
+  LessonProgressMap,
+  Quiz,
+} from "./lesson-types";
 import { QuizSection } from "./quiz-section";
 
 const AUTOPLAY_KEY = "cadence-autoplay";
@@ -49,25 +56,6 @@ function useAutoplay() {
   return [enabled, toggle] as const;
 }
 
-type LessonLink = { id: number; title: string };
-type CourseSummary = { id: number; title: string; slug: string };
-type Curriculum = Array<{
-  id: number;
-  title: string;
-  lessons: LessonLink[];
-}>;
-type Quiz = {
-  id: number;
-  title: string;
-  passingScore: number;
-  questions: Array<{
-    id: number;
-    questionText: string;
-    questionType: string;
-    position: number;
-    options: Array<{ id: number; optionText: string }>;
-  }>;
-};
 type LessonLoaderData =
   | {
       view: "locked";
@@ -89,7 +77,7 @@ type LessonLoaderData =
         videoUrl: string | null;
       };
       contentHtml: string | null;
-      lessonStatus: string | null;
+      lessonStatus: LessonProgressStatus | null;
       enrolled: boolean;
       currentUserId: number | null;
       prevLesson: LessonLink | null;
@@ -98,7 +86,7 @@ type LessonLoaderData =
       bestAttempt: { score: number; passed: boolean } | null;
       lastWatchPosition: number;
       watchProgress: number;
-      lessonProgressMap: Record<number, string>;
+      lessonProgressMap: LessonProgressMap;
       comments: RenderedComment[];
       canModerate: boolean;
       instructorName: string;
