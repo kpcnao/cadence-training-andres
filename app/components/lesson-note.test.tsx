@@ -15,7 +15,9 @@ function mockFetcher({
   data,
 }: {
   state?: "idle" | "submitting" | "loading";
-  data?: { ok?: boolean; error?: string };
+  data?:
+    | { ok: true; note: { body: string; updatedAt: string } }
+    | { ok: false; error: string };
 } = {}) {
   function Form({ children, ...props }: ComponentProps<"form">) {
     return <form {...props}>{children}</form>;

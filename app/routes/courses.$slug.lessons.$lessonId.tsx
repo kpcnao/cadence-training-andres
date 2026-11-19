@@ -413,7 +413,10 @@ export async function action({ params, request }: Route.ActionArgs) {
       new Date()
     );
     if (!saved.ok) return saved;
-    return { ok: true };
+    return {
+      ok: true,
+      note: { body: saved.note.body, updatedAt: saved.note.updatedAt },
+    };
   }
 
   if (intent === "mark-complete") {

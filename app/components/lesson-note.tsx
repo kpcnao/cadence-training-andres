@@ -112,12 +112,17 @@ export function LessonNote({
 }: {
   note: { body: string; updatedAt: string } | null;
 }) {
-  const fetcher = useFetcher<{ ok: boolean; error?: string }>();
+  const fetcher = useFetcher<
+    | { ok: true; note: { body: string; updatedAt: string } }
+    | { ok: false; error: string }
+  >();
   const [body, setBody] = useState(note?.body ?? "");
   const isSaving = fetcher.state !== "idle";
-  const error = fetcher.data?.error;
-  const hasChanges = body.trim() !== (note?.body ?? "");
-  const hasSavedNote = Boolean(note || fetcher.data?.ok);
+  const error =
+    fetcher.data && !fetcher.data.ok ? fetcher.data.error : undefined;
+  const savedNote = fetcher.data?.ok ? fetcher.data.note : note;
+  const hasChanges = body.trim() !== (savedNote?.body ?? "");
+  const hasSavedNote = Boolean(savedNote);
 
   return (
     <div>
@@ -147,7 +152,7 @@ export function LessonNote({
           isSaving={isSaving}
           hasChanges={hasChanges}
           hasSavedNote={hasSavedNote}
-          note={note}
+          note={savedNote}
         />
       </fetcher.Form>
     </div>
