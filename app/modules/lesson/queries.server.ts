@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "~/db";
 import {
   categories,
@@ -267,10 +267,23 @@ export function getCommentById(commentId: number) {
   return db.select().from(comments).where(eq(comments.id, commentId)).get();
 }
 
-export function getLessonThread(lessonId: number): ThreadComment[] {
+export function getLessonThread(
+  lessonId: number,
+  maxThreads = 50
+): ThreadComment[] {
   const course = getCourseForLesson(lessonId);
   if (!course) return [];
 
+  const threadIds = db
+    .select({ id: comments.id })
+    .from(comments)
+    .where(and(eq(comments.lessonId, lessonId), isNull(comments.parentId)))
+    .orderBy(desc(comments.createdAt), desc(comments.id))
+    .limit(maxThreads)
+    .all();
+  if (threadIds.length === 0) return [];
+
+  const ids = threadIds.map((thread) => thread.id);
   const rows = db
     .select({
       id: comments.id,
@@ -286,7 +299,12 @@ export function getLessonThread(lessonId: number): ThreadComment[] {
     })
     .from(comments)
     .innerJoin(users, eq(comments.userId, users.id))
-    .where(eq(comments.lessonId, lessonId))
+    .where(
+      and(
+        eq(comments.lessonId, lessonId),
+        or(inArray(comments.id, ids), inArray(comments.parentId, ids))
+      )
+    )
     .orderBy(asc(comments.createdAt), asc(comments.id))
     .all();
 
