@@ -150,62 +150,52 @@ export function getLessonProgressForCourse(userId: number, courseId: number) {
     .all();
 }
 
+function saveLessonProgress(
+  values: {
+    userId: number;
+    lessonId: number;
+    status: LessonProgressStatus;
+    completedAt?: string;
+  },
+  existing = getLessonProgress(values.userId, values.lessonId)
+) {
+  if (existing) {
+    return db
+      .update(lessonProgress)
+      .set(values)
+      .where(eq(lessonProgress.id, existing.id))
+      .returning()
+      .get();
+  }
+
+  return db.insert(lessonProgress).values(values).returning().get();
+}
+
 export function markLessonComplete(
   userId: number,
   lessonId: number,
   now: Date
 ) {
-  const existing = getLessonProgress(userId, lessonId);
-  const completedAt = now.toISOString();
-
-  if (existing) {
-    return db
-      .update(lessonProgress)
-      .set({
-        status: LessonProgressStatus.Completed,
-        completedAt,
-      })
-      .where(eq(lessonProgress.id, existing.id))
-      .returning()
-      .get();
-  }
-
-  return db
-    .insert(lessonProgress)
-    .values({
-      userId,
-      lessonId,
-      status: LessonProgressStatus.Completed,
-      completedAt: new Date().toISOString(),
-    })
-    .returning()
-    .get();
+  return saveLessonProgress({
+    userId,
+    lessonId,
+    status: LessonProgressStatus.Completed,
+    completedAt: now.toISOString(),
+  });
 }
 
 export function markLessonInProgress(userId: number, lessonId: number) {
   const existing = getLessonProgress(userId, lessonId);
+  if (existing?.status === LessonProgressStatus.Completed) return existing;
 
-  if (existing) {
-    if (existing.status === LessonProgressStatus.Completed) {
-      return existing;
-    }
-    return db
-      .update(lessonProgress)
-      .set({ status: LessonProgressStatus.InProgress })
-      .where(eq(lessonProgress.id, existing.id))
-      .returning()
-      .get();
-  }
-
-  return db
-    .insert(lessonProgress)
-    .values({
+  return saveLessonProgress(
+    {
       userId,
       lessonId,
       status: LessonProgressStatus.InProgress,
-    })
-    .returning()
-    .get();
+    },
+    existing
+  );
 }
 
 export function getLastWatchPosition(userId: number, lessonId: number) {
