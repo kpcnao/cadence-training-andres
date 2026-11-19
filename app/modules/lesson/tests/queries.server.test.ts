@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { eq } from "drizzle-orm";
 import { createTestDb, seedBaseData, type TestDb } from "~/test/setup";
 import {
   comments,
@@ -130,6 +131,18 @@ describe("quizzes", () => {
     expect(select).toHaveBeenCalledTimes(2);
   });
 
+  it("keeps questions that have no options", () => {
+    const { quiz, questions } = addQuiz();
+    db.delete(quizOptions)
+      .where(eq(quizOptions.questionId, questions[0].id))
+      .run();
+
+    const result = getQuizWithQuestions(quiz.id);
+
+    expect(result?.questions[0].options).toEqual([]);
+    expect(result?.questions[1].options).toHaveLength(2);
+  });
+
   it("grades selected answers and saves the attempt with its answers", () => {
     const { quiz, questions } = addQuiz();
     const selectedAnswers = Object.fromEntries(
@@ -149,6 +162,42 @@ describe("quizzes", () => {
     expect(db.select().from(quizAnswers).all()).toHaveLength(3);
   });
 
+  it("reports a missing correct option without failing the attempt", () => {
+    const { quiz, questions } = addQuiz();
+    db.update(quizOptions)
+      .set({ isCorrect: false })
+      .where(eq(quizOptions.questionId, questions[0].id))
+      .run();
+    const selectedAnswers = Object.fromEntries(
+      questions.map((question) => [question.id, question.correctOptionId])
+    );
+
+    const result = computeResult(userId, quiz.id, selectedAnswers);
+
+    expect(result?.questionResults[0]).toEqual({
+      questionId: questions[0].id,
+      correct: false,
+      selectedOptionId: questions[0].correctOptionId,
+      correctOptionId: null,
+    });
+    expect(result?.totalCorrect).toBe(2);
+  });
+
+  it("saves an unanswered attempt without answer rows", () => {
+    const { quiz } = addQuiz();
+
+    const result = computeResult(userId, quiz.id, {});
+
+    expect(result).toMatchObject({
+      score: 0,
+      passed: false,
+      totalCorrect: 0,
+      totalQuestions: 3,
+    });
+    expect(db.select().from(quizAttempts).all()).toHaveLength(1);
+    expect(db.select().from(quizAnswers).all()).toHaveLength(0);
+  });
+
   it("rolls back the attempt when an answer cannot be saved", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { quiz, questions } = addQuiz();
@@ -164,6 +213,13 @@ describe("quizzes", () => {
 });
 
 describe("discussion", () => {
+  it("does not query comment rows when there are no threads", () => {
+    const select = vi.spyOn(db, "select");
+
+    expect(getLessonThread(lessonId)).toEqual([]);
+    expect(select).toHaveBeenCalledTimes(2);
+  });
+
   it("loads the latest bounded threads and their replies", () => {
     const topLevel = [1, 2, 3].map((position) =>
       db
