@@ -72,7 +72,6 @@ export function QuizSection({
             <h2 className="text-xl font-semibold">{quiz.title}</h2>
           </div>
 
-          {/* Results summary */}
           <div
             className={`mb-6 rounded-lg p-4 ${quizResult.passed ? "bg-green-50 dark:bg-green-950" : "bg-red-50 dark:bg-red-950"}`}
           >
@@ -97,7 +96,6 @@ export function QuizSection({
             </div>
           </div>
 
-          {/* Per-question results */}
           <div className="space-y-4">
             {quiz.questions.map((question, qIndex) => {
               const result = quizResult.questionResults.find(
@@ -139,7 +137,6 @@ export function QuizSection({
             })}
           </div>
 
-          {/* Retake button */}
           {!quizResult.passed && (
             <div className="mt-6">
               <Button

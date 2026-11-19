@@ -22,13 +22,11 @@ export function CurriculumSidebar({
   lessonProgressMap: LessonProgressMap;
   enrolled: boolean;
 }) {
-  // Find which module the current lesson belongs to
   const currentModuleId = curriculum.find((m) =>
     m.lessons.some((l) => l.id === currentLessonId)
   )?.id;
 
   const [expandedModules, setExpandedModules] = useState<Set<number>>(() => {
-    // Start with current module expanded
     const initial = new Set<number>();
     if (currentModuleId) initial.add(currentModuleId);
     return initial;
