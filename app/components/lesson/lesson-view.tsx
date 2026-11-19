@@ -37,16 +37,14 @@ function useAutoplay() {
   }, []);
 
   const toggle = useCallback(() => {
-    setEnabled((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(AUTOPLAY_KEY, String(next));
-      } catch {
-        /* silently fail */
-      }
-      return next;
-    });
-  }, []);
+    const next = !enabled;
+    setEnabled(next);
+    try {
+      localStorage.setItem(AUTOPLAY_KEY, String(next));
+    } catch {
+      /* silently fail */
+    }
+  }, [enabled]);
 
   return [enabled, toggle] as const;
 }
