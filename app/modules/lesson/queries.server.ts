@@ -331,23 +331,30 @@ export function getQuizWithQuestions(quizId: number) {
   const quiz = db.select().from(quizzes).where(eq(quizzes.id, quizId)).get();
   if (!quiz) return null;
 
-  const questions = db
-    .select()
+  const rows = db
+    .select({ question: quizQuestions, option: quizOptions })
     .from(quizQuestions)
+    .leftJoin(quizOptions, eq(quizOptions.questionId, quizQuestions.id))
     .where(eq(quizQuestions.quizId, quizId))
     .orderBy(quizQuestions.position)
     .all();
 
-  const questionsWithOptions = questions.map((question) => {
-    const options = db
-      .select()
-      .from(quizOptions)
-      .where(eq(quizOptions.questionId, question.id))
-      .all();
-    return { ...question, options };
-  });
+  const questionsById = new Map<
+    number,
+    typeof quizQuestions.$inferSelect & {
+      options: Array<typeof quizOptions.$inferSelect>;
+    }
+  >();
+  for (const row of rows) {
+    let question = questionsById.get(row.question.id);
+    if (!question) {
+      question = { ...row.question, options: [] };
+      questionsById.set(question.id, question);
+    }
+    if (row.option) question.options.push(row.option);
+  }
 
-  return { ...quiz, questions: questionsWithOptions };
+  return { ...quiz, questions: [...questionsById.values()] };
 }
 
 export function getBestAttempt(userId: number, quizId: number) {
@@ -383,18 +390,13 @@ export function computeResult(
   selectedAnswers: Record<number, number>
 ) {
   try {
-    const quiz = db.select().from(quizzes).where(eq(quizzes.id, quizId)).get();
+    const quiz = getQuizWithQuestions(quizId);
     if (!quiz) {
       console.error("quiz not found");
       return null;
     }
 
-    const questions = db
-      .select()
-      .from(quizQuestions)
-      .where(eq(quizQuestions.quizId, quizId))
-      .orderBy(quizQuestions.position)
-      .all();
+    const { questions } = quiz;
 
     let correct = 0;
     const total = questions.length;
@@ -414,28 +416,8 @@ export function computeResult(
         continue;
       }
 
-      let correctOptionId = null;
-      if (q.questionType === "multiple_choice") {
-        const opts = db
-          .select()
-          .from(quizOptions)
-          .where(eq(quizOptions.questionId, q.id))
-          .all();
-        const correctOpt = opts.find((o) => o.isCorrect === true);
-        correctOptionId = correctOpt ? correctOpt.id : null;
-      } else if (q.questionType === "true_false") {
-        const correctOpt = db
-          .select()
-          .from(quizOptions)
-          .where(
-            and(
-              eq(quizOptions.questionId, q.id),
-              eq(quizOptions.isCorrect, true)
-            )
-          )
-          .get();
-        correctOptionId = correctOpt ? correctOpt.id : null;
-      }
+      const correctOptionId =
+        q.options.find((option) => option.isCorrect)?.id ?? null;
 
       const isCorrect = selected === correctOptionId;
       if (isCorrect) correct++;
