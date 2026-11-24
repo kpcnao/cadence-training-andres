@@ -105,6 +105,19 @@ describe("saving a Note", () => {
     });
   });
 
+  it("keeps the previous Note when a replacement is too long", () => {
+    saveNote(db, base.user.id, lessonIds[0], "Keep this thought", NOW);
+
+    expect(
+      saveNote(db, base.user.id, lessonIds[0], "a".repeat(2001), NOW)
+    ).toMatchObject({ ok: false });
+    expect(getNote(db, base.user.id, lessonIds[0])).toMatchObject({
+      body: "Keep this thought",
+      createdAt: NOW.toISOString(),
+      updatedAt: NOW.toISOString(),
+    });
+  });
+
   it("keeps the body exactly as typed, Markdown characters included", () => {
     saveNote(
       db,

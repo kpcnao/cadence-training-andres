@@ -144,3 +144,57 @@
   width: 50%;
   animation: loading-bar-shimmer 1.2s ease-in-out infinite;
 }
+
+/* Notes belong to the lesson, so their writing surface should not read as a
+   second form card stacked on top of the content. */
+[data-slot="card"]:has(input[value="save-note"]) {
+  gap: 0;
+  margin-bottom: 2rem;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 1.25rem 0;
+}
+
+[data-slot="card"]:has(input[value="save-note"]) > [data-slot="card-content"] {
+  padding: 0;
+}
+
+[data-slot="card"]:has(input[value="save-note"]) h2 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+[data-slot="card"]:has(input[value="save-note"]) textarea {
+  min-height: 6.5rem;
+  resize: vertical;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0.375rem 0 0.75rem;
+}
+
+[data-slot="card"]:has(input[value="save-note"]) textarea:focus-visible {
+  border: 0;
+  box-shadow: none;
+  outline: 2px solid var(--ring);
+  outline-offset: 0.375rem;
+}
+
+[data-slot="card"]:has(input[value="save-note"]) form > div:last-child {
+  flex-wrap: wrap;
+}
+
+[data-slot="card"]:has(input[value="save-note"]) form > div:last-child button {
+  order: 2;
+  margin-left: auto;
+}
+
+[data-slot="card"]:has(input[value="save-note"]) form > div:last-child span {
+  order: 1;
+  margin-right: auto;
+}
